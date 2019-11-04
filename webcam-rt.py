@@ -2,7 +2,7 @@ import pyfakewebcam
 import cv2
 import time
 import numpy as np
-
+from datetime import datetime, timedelta
 
 
 def run_rt(webcam):
@@ -23,10 +23,7 @@ def run_rt(webcam):
         print("Fake webcam created, try using appear.in on Firefox or  ")
 
     # loop until user clicks 'q' to exit
-    last_h = 0
-    last_w = 0
-    last_y = 0
-    last_x = 0
+
     current_h = 10
     current_w = 10
     current_y = 10
@@ -36,6 +33,13 @@ def run_rt(webcam):
     ew2 = int(extra_width/2)
     eh2 = int(extra_height/2)
     frame_count = 0
+    td = timedelta(seconds = 0.1)
+    now = datetime.now()
+    one_sec = now + td
+    next_update_time = [one_sec, one_sec, one_sec, one_sec]
+    next_update_val = [0, 0, 0, 0]
+    current_viewport = [0,0,0,0]
+    first_frame = True
     while True:
         frame_count = (frame_count + 1) % 30
         ret, frame = video_capture.read()
@@ -45,50 +49,57 @@ def run_rt(webcam):
         image = frame
         # flip it back
         image = cv2.flip(image,1)
+        now = datetime.now()
         try:
             faces_rects = haar_cascade_face.detectMultiScale(image, scaleFactor = 1.2, minNeighbors = 5)
+            for i in range(4):
+                if next_update_time[i] < now:
+                    current_viewport[i] += next_update_val[i]
+                    next_update_val[i] = 0
             if len(faces_rects) == 1:
-                h = faces_rects[0][2]
-                w = faces_rects[0][3]
-                y = faces_rects[0][1]
-                x = faces_rects[0][0]
-                if (frame_count == 0):
-                    current_h += int((h - last_h)/2)
-                    current_w += int((w - last_w)/2)
-                    current_y += int((y - last_y)/2)
-                    current_x += int((x - last_x)/2)
-                #print(current_h, current_w, current_y, current_x)
-                last_h = current_h
-                last_w = current_w
-                last_y = current_y
-                last_x = current_x
+                if first_frame:
+                    current_viewport = np.copy(faces_rects[0])
+                    first_frame = False
+                for i in range(4):
+                    diff = current_viewport[i] - faces_rects[0][i]
+                    next_update_val[i] = 0
+                    if diff > 5:
+                        next_update_val[i] = -1
+                    if diff < -5:
+                        next_update_val[i] = 1
+                    if abs(diff) > 5:
+                        next_update_time[i] = now + (td/(max(abs(diff), 90)))
+
+            current_x, current_y, current_h, current_w = current_viewport
             image = image[current_y-eh2:current_y+current_h+eh2, current_x-ew2:current_x+current_w+ew2]
             blank_image = np.zeros((360, 640, 3), np.uint8)
             blank_image[0:current_h+extra_height, 0:current_w+extra_width] = image
             image = blank_image
             #image = cv2.resize(image, (640, 360))
             #print(faces_rects)
-        except:
+
+
+            if (webcam):
+                time.sleep(1/30.0)
+                # firefox needs RGB
+
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                # chrome and skype UYUV - not working at the
+
+                # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                # chrome and skype UYUV - not working at the moment
+
+                # image = cv2.cvtColor(image, cv2.COLOR_BGR2YUV)
+
+                camera.schedule_frame(image)
+                #print("writing to stream")
+
+            else:
+                cv2.imshow('Video', image)
+                #print("writing to screen")
+        except Exception as e:
+            print(e)
             pass
-
-        if (webcam):
-            time.sleep(1/30.0)
-            # firefox needs RGB
-
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            # chrome and skype UYUV - not working at the
-
-            # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            # chrome and skype UYUV - not working at the moment
-
-            # image = cv2.cvtColor(image, cv2.COLOR_BGR2YUV)
-
-            camera.schedule_frame(image)
-            #print("writing to stream")
-
-        else:
-            cv2.imshow('Video', image)
-            #print("writing to screen")
 
         # Hit 'q' on the keyboard to quit!
         if cv2.waitKey(1) & 0xFF == ord('q'):
