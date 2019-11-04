@@ -72,8 +72,14 @@ def run_rt(webcam):
 
             current_x, current_y, current_h, current_w = current_viewport
             image = image[current_y-eh2:current_y+current_h+eh2, current_x-ew2:current_x+current_w+ew2]
+            image_height = current_h + extra_height
+            image_width = current_w + extra_width
+            #scale_ratio = image_width/(image_height*1.0)
+            target_width = int((360.0/image_height)*image_width)
+            image = cv2.resize(image, (target_width, 360))
             blank_image = np.zeros((360, 640, 3), np.uint8)
-            blank_image[0:current_h+extra_height, 0:current_w+extra_width] = image
+            paste_position = int((640/2) - image_width/2)
+            blank_image[0:360, paste_position:paste_position + target_width] = image
             image = blank_image
             #image = cv2.resize(image, (640, 360))
             #print(faces_rects)
