@@ -38,14 +38,12 @@ def run_rt(webcam):
     next_frame = now + timedelta(seconds=1 / 30.0)
     run_face_detection = True
     ret, frame = video_capture.read()
-    error_point = "start"
     while True:
         now = datetime.now()
         if now >= next_frame:
-            next_frame = now + timedelta(seconds=1 / 30.0)
+            next_frame = now + timedelta(seconds=1/30.0)
             frame_count = (frame_count + 1) % 30
             ret, frame = video_capture.read()
-            error_point = "resize 1"
             image = cv2.resize(frame, (640, 360))
             try:
                 current_x, current_y, current_h, current_w = current_viewport
@@ -54,7 +52,6 @@ def run_rt(webcam):
                 image_width = current_w + extra_width
                 # scale_ratio = image_width/(image_height*1.0)
                 target_width = int((360.0 / image_height) * image_width)
-                error_point = "resize 2"
                 image = cv2.resize(image, (target_width, 360))
                 blank_image = np.zeros((360, 640, 3), np.uint8)
                 paste_position = int((640 / 2) - image_width / 2)
@@ -70,7 +67,7 @@ def run_rt(webcam):
                     cv2.imshow('Video', image)
 
             except Exception as e:
-                print(e, error_point, target_width)
+                print(e, target_width)
                 pass
 
             # Hit 'q' on the keyboard to quit!
