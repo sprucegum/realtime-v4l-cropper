@@ -90,10 +90,10 @@ def run_rt(webcam):
                         next_update_val[i] = -1
                     if diff < -10:
                         next_update_val[i] = 1
-                    if abs(diff) > 25:
+                    if abs(diff) > 20:
                         update_rate = 30
                         if i in [2,3]:  # slow down the zoom of the crop
-                            update_rate = 2
+                            update_rate = 15
                         next_update_time[i] = now + (td / (min(abs(diff), update_rate)))
 
 
