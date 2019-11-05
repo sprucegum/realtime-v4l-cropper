@@ -3,7 +3,8 @@ import cv2
 import time
 import numpy as np
 from datetime import datetime, timedelta
-
+OUTPUT_WIDTH = 640
+OUTPUT_HEIGHT = 360
 
 def run_rt(webcam):
     video_capture = cv2.VideoCapture(2)
@@ -17,7 +18,7 @@ def run_rt(webcam):
     # video_capture = cv2.VideoCapture('./data/videos/ale.mp4')
     if (webcam):
         # create fake webcam device
-        camera = pyfakewebcam.FakeWebcam('/dev/video4', 640, 360)
+        camera = pyfakewebcam.FakeWebcam('/dev/video4', OUTPUT_WIDTH, OUTPUT_HEIGHT)
         camera.print_capabilities()
         print("Fake webcam created, try using appear.in on Firefox or  ")
 
@@ -33,33 +34,39 @@ def run_rt(webcam):
     one_sec = now + td
     next_update_time = [one_sec, one_sec, one_sec, one_sec]
     next_update_val = [0, 0, 0, 0]
-    current_viewport = [ew2, eh2, 360 - extra_height, 640 - extra_width]
+    cv_width = 640
+    cv_height = 360
+    current_viewport = [ew2, eh2, cv_height - extra_height, cv_width - extra_width]
     first_frame = True
-    next_frame = now + timedelta(seconds=1 / 30.0)
+    fps = 30.0
+    next_frame = now + timedelta(seconds=1 / fps)
     run_face_detection = True
     ret, frame = video_capture.read()
+    input_width = 1920
+    input_height = 1080
+
+    input_to_cv_ratio = (input_width*1.0)/cv_width
     while True:
         now = datetime.now()
         if now >= next_frame:
-            next_frame = now + timedelta(seconds=1/30.0)
-            frame_count = (frame_count + 1) % 30
+            next_frame = now + timedelta(seconds=1/fps)
+            frame_count = (frame_count + 1) % fps
             ret, frame = video_capture.read()
-            image = cv2.resize(frame, (640, 360))
+            image = frame
             try:
                 current_x, current_y, current_h, current_w = current_viewport
                 image = image[current_y - eh2:current_y + current_h + eh2, current_x - ew2:current_x + current_w + ew2]
                 image_height = current_h + extra_height
-                image_width = current_w + extra_width
-                # scale_ratio = image_width/(image_height*1.0)
-                target_width = int((360.0 / image_height) * image_width)
-                image = cv2.resize(image, (target_width, 360))
-                blank_image = np.zeros((360, 640, 3), np.uint8)
-                paste_position = int((640 / 2) - image_width / 2)
-                blank_image[0:360, paste_position:paste_position + target_width] = image
+                image_width = (current_w + extra_width)*1.0
+                target_width = int((cv_height*1.0 / image_height) * image_width)
+                image = cv2.resize(image, (target_width, cv_height))
+                blank_image = np.zeros((cv_height, cv_width, 3), np.uint8)
+                paste_position = int((cv_width / 2) - image_width / 2)
+                blank_image[0:cv_height, paste_position:paste_position + target_width] = image
                 image = blank_image
                 run_face_detection = True
                 if (webcam):
-                    # firefox needs RGB
+                    # OBS needs RGB
                     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                     camera.schedule_frame(image)
 
