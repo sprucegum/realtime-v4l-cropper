@@ -3,8 +3,8 @@ import cv2
 import time
 import numpy as np
 from datetime import datetime, timedelta
-PROCESSING_HEIGHT = 360
-PROCESSING_WIDTH = 640
+PROCESSING_HEIGHT = 1080
+PROCESSING_WIDTH = 1920
 
 def run_rt(webcam):
     video_capture = cv2.VideoCapture(2)
@@ -45,35 +45,34 @@ def run_rt(webcam):
             next_frame = now + timedelta(seconds=1/30.0)
             frame_count = (frame_count + 1) % 30
             ret, frame = video_capture.read()
-            image = cv2.resize(frame, (PROCESSING_WIDTH, PROCESSING_HEIGHT))
-            try:
-                current_x, current_y, current_h, current_w = current_viewport
-                image = image[current_y - eh2:current_y + current_h + eh2, current_x - ew2:current_x + current_w + ew2]
-                image_height = current_h + extra_height
-                image_width = current_w + extra_width
-                # scale_ratio = image_width/(image_height*1.0)
-                target_width = int((PROCESSING_HEIGHT / image_height*1.0) * image_width)
-                image = cv2.resize(image, (target_width, PROCESSING_HEIGHT))
-                blank_image = np.zeros((PROCESSING_HEIGHT, PROCESSING_WIDTH, 3), np.uint8)
-                paste_position = int((640 / 2) - image_width / 2)
-                blank_image[0:360, paste_position:paste_position + target_width] = image
-                image = blank_image
-                run_face_detection = True
-                if (webcam):
-                    # firefox needs RGB
-                    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                    camera.schedule_frame(image)
+            frame = cv2.resize(frame, (PROCESSING_WIDTH, PROCESSING_HEIGHT))
 
-                else:
-                    cv2.imshow('Video', image)
+            current_x, current_y, current_h, current_w = current_viewport
+            center_point = [current_x + (current_w/2), current_y + current_h/2]
+            output_ratio = PROCESSING_WIDTH/(PROCESSING_HEIGHT*1.0)
+            crop_height = current_h
+            crop_width = int(crop_height*output_ratio)
+            ideal_crop = [center_point[0] - (crop_width/2), center_point[1] - (crop_height/2)]
+            ideal_crop = list(map(int, ideal_crop))
+            print(ideal_crop)
+            image = frame[ideal_crop[1]:ideal_crop[1]+crop_height, ideal_crop[0]:ideal_crop[0]+crop_width]
+            blank_image = np.zeros((PROCESSING_HEIGHT, PROCESSING_WIDTH, 3), np.uint8)
+            blank_image[0:crop_height, 0:crop_width] = image
+            image = blank_image
+            run_face_detection = True
+            if (webcam):
+                # firefox needs RGB
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                camera.schedule_frame(image)
 
-            except Exception as e:
-                print(e, target_width)
-                pass
+            else:
+                cv2.imshow('Video', image)
+
+
 
             # Hit 'q' on the keyboard to quit!
         if run_face_detection:
-            faces_rects = haar_cascade_face.detectMultiScale(image, scaleFactor=1.2, minNeighbors=5)
+            faces_rects = haar_cascade_face.detectMultiScale(frame, scaleFactor=1.2, minNeighbors=5)
             run_face_detection = False
             for i in range(4):
                 if next_update_time[i] < now:
