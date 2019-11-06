@@ -49,7 +49,8 @@ def run_rt(webcam):
             frame = cv2.resize(frame, (PROCESSING_WIDTH, PROCESSING_HEIGHT))
 
             current_x, current_y, current_h, current_w = current_viewport
-            center_point = [current_x + (current_w/2), current_y + current_h/2]
+            aim_up = -20
+            center_point = [current_x + (current_w/2), current_y + current_h/2 + aim_up]
             output_ratio = PROCESSING_WIDTH/(PROCESSING_HEIGHT*1.0)
             zoomout = 1.4
             crop_height = int(current_h*zoomout)
@@ -59,9 +60,10 @@ def run_rt(webcam):
             image = frame[ideal_crop[1]:ideal_crop[1]+crop_height, ideal_crop[0]:ideal_crop[0]+crop_width]
             image = cv2.resize(image, (PROCESSING_WIDTH, PROCESSING_HEIGHT))
 
-            if frame_count % 1 == 0:
+            if frame_count == 0:
                 run_face_detection = True
-            if (webcam):
+
+            if webcam:
                 # firefox needs RGB
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 camera.schedule_frame(image)
@@ -70,7 +72,6 @@ def run_rt(webcam):
                 cv2.imshow('Video', image)
 
             if run_face_detection:
-
                 faces_rects = haar_cascade_face.detectMultiScale(frame, scaleFactor=3, minNeighbors=5)
                 run_face_detection = False
             for i in range(4):
@@ -93,10 +94,8 @@ def run_rt(webcam):
                         if i in [2,3]:  # slow down the zoom of the crop
                             update_rate = 15
                         next_update_time[i] = now + (td / (min(abs(diff), update_rate)))
-
-
-
-
+                    else:
+                        next_update_val[i] = 0
 
 if __name__ == "__main__":
     run_rt(True)
