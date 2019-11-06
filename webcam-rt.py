@@ -22,21 +22,16 @@ def run_rt(webcam):
         # create fake webcam device
         camera = pyfakewebcam.FakeWebcam('/dev/video4', PROCESSING_WIDTH, PROCESSING_HEIGHT)
         camera.print_capabilities()
-        print("Fake webcam created, try using appear.in on Firefox or  ")
+        print("Fake webcam created")
 
     # loop until user clicks 'q' to exit
-
-    extra_height = 70
-    extra_width = 50
-    ew2 = int(extra_width / 2)
-    eh2 = int(extra_height / 2)
     frame_count = 0
     td = timedelta(seconds=0.1)
     now = datetime.now()
     one_sec = now + td
     next_update_time = [one_sec, one_sec, one_sec, one_sec]
     next_update_val = [0, 0, 0, 0]
-    current_viewport = [ew2, eh2, PROCESSING_HEIGHT - extra_height, PROCESSING_WIDTH - extra_width]
+    current_viewport = [0, 0, PROCESSING_HEIGHT, PROCESSING_WIDTH]
     first_frame = True
     next_frame = now + timedelta(seconds=1 / 30.0)
     run_face_detection = True
@@ -47,9 +42,8 @@ def run_rt(webcam):
             frame_count = (frame_count + 1) % 30
             ret, frame = video_capture.read()
             frame = cv2.resize(frame, (PROCESSING_WIDTH, PROCESSING_HEIGHT))
-
             current_x, current_y, current_h, current_w = current_viewport
-            aim_up = -20
+            aim_up = -10
             center_point = [current_x + (current_w/2), current_y + current_h/2 + aim_up]
             output_ratio = PROCESSING_WIDTH/(PROCESSING_HEIGHT*1.0)
             zoomout = 1.4
@@ -89,7 +83,7 @@ def run_rt(webcam):
                         next_update_val[i] = -1
                     if diff < 0:
                         next_update_val[i] = 1
-                    if abs(diff) > 30:
+                    if abs(diff) > 20:
                         update_rate = 30
                         if i in [2,3]:  # slow down the zoom of the crop
                             update_rate = 15
