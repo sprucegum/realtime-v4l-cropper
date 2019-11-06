@@ -3,12 +3,14 @@ import cv2
 import time
 import numpy as np
 from datetime import datetime, timedelta
-PROCESSING_HEIGHT = 1080
-PROCESSING_WIDTH = 1920
+PROCESSING_HEIGHT = 720
+PROCESSING_WIDTH = 1280
 
 def run_rt(webcam):
     video_capture = cv2.VideoCapture(2)
     time.sleep(1)
+    video_capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+    video_capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
 
     width = video_capture.get(3)  # float
     height = video_capture.get(4)  # float
@@ -38,7 +40,6 @@ def run_rt(webcam):
     first_frame = True
     next_frame = now + timedelta(seconds=1 / 30.0)
     run_face_detection = True
-    ret, frame = video_capture.read()
     while True:
         now = datetime.now()
         if now >= next_frame:
@@ -50,16 +51,16 @@ def run_rt(webcam):
             current_x, current_y, current_h, current_w = current_viewport
             center_point = [current_x + (current_w/2), current_y + current_h/2]
             output_ratio = PROCESSING_WIDTH/(PROCESSING_HEIGHT*1.0)
-            crop_height = current_h
+            zoomout = 1.4
+            crop_height = int(current_h*zoomout)
             crop_width = int(crop_height*output_ratio)
             ideal_crop = [center_point[0] - (crop_width/2), center_point[1] - (crop_height/2)]
             ideal_crop = list(map(int, ideal_crop))
-            print(ideal_crop)
             image = frame[ideal_crop[1]:ideal_crop[1]+crop_height, ideal_crop[0]:ideal_crop[0]+crop_width]
-            blank_image = np.zeros((PROCESSING_HEIGHT, PROCESSING_WIDTH, 3), np.uint8)
-            blank_image[0:crop_height, 0:crop_width] = image
-            image = blank_image
-            run_face_detection = True
+            image = cv2.resize(image, (PROCESSING_WIDTH, PROCESSING_HEIGHT))
+
+            if frame_count % 1 == 0:
+                run_face_detection = True
             if (webcam):
                 # firefox needs RGB
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -68,12 +69,10 @@ def run_rt(webcam):
             else:
                 cv2.imshow('Video', image)
 
+            if run_face_detection:
 
-
-            # Hit 'q' on the keyboard to quit!
-        if run_face_detection:
-            faces_rects = haar_cascade_face.detectMultiScale(frame, scaleFactor=1.2, minNeighbors=5)
-            run_face_detection = False
+                faces_rects = haar_cascade_face.detectMultiScale(frame, scaleFactor=3, minNeighbors=5)
+                run_face_detection = False
             for i in range(4):
                 if next_update_time[i] < now:
                     current_viewport[i] += next_update_val[i]
@@ -85,15 +84,18 @@ def run_rt(webcam):
                 for i in range(4):
                     diff = current_viewport[i] - faces_rects[0][i]
                     next_update_val[i] = 0
-                    if diff > 10:
+                    if diff > 0:
                         next_update_val[i] = -1
-                    if diff < -10:
+                    if diff < 0:
                         next_update_val[i] = 1
-                    if abs(diff) > 20:
+                    if abs(diff) > 30:
                         update_rate = 30
                         if i in [2,3]:  # slow down the zoom of the crop
                             update_rate = 15
                         next_update_time[i] = now + (td / (min(abs(diff), update_rate)))
+
+
+
 
 
 if __name__ == "__main__":
