@@ -42,25 +42,29 @@ def run_rt(webcam):
     while True:
         now = datetime.now()
         if now >= next_frame:
-            next_frame = now + timedelta(seconds=1.0/FPS)
-            frame_count = (frame_count + 1) % FPS
-            ret, frame = video_capture.read()
-            frame = cv2.resize(frame, (PROCESSING_WIDTH, PROCESSING_HEIGHT))
-            current_x, current_y, current_h, current_w = current_viewport
-            aim_up = -10
-            center_point = [current_x + (current_w/2), current_y + current_h/2 + aim_up]
-            output_ratio = PROCESSING_WIDTH/(PROCESSING_HEIGHT*1.0)
-            zoomout = 1.4
-            crop_height = int(current_h*zoomout)
-            crop_width = int(crop_height*output_ratio)
-            ideal_crop = [center_point[0] - (crop_width/2), center_point[1] - (crop_height/2)]
-            ideal_crop = list(map(int, ideal_crop))
-            image = frame[ideal_crop[1]:ideal_crop[1]+crop_height, ideal_crop[0]:ideal_crop[0]+crop_width]
-            image = cv2.resize(image, (PROCESSING_WIDTH, PROCESSING_HEIGHT))
+            ''' PERFORM CROP '''
+            try:
+                next_frame = now + timedelta(seconds=1.0/FPS)
+                frame_count = (frame_count + 1) % FPS
+                ret, frame = video_capture.read()
+                frame = cv2.resize(frame, (PROCESSING_WIDTH, PROCESSING_HEIGHT))
+                current_x, current_y, current_h, current_w = current_viewport
+                aim_up = -10
+                center_point = [current_x + (current_w/2), current_y + current_h/2 + aim_up]
+                output_ratio = PROCESSING_WIDTH/(PROCESSING_HEIGHT*1.0)
+                zoomout = 1.5
+                crop_height = int(current_h*zoomout)
+                crop_width = int(crop_height*output_ratio)
+                ideal_crop = [center_point[0] - (crop_width/2), center_point[1] - (crop_height/2)]
+                ideal_crop = list(map(int, ideal_crop))
+                image = frame[ideal_crop[1]:ideal_crop[1]+crop_height, ideal_crop[0]:ideal_crop[0]+crop_width]
+                image = cv2.resize(image, (PROCESSING_WIDTH, PROCESSING_HEIGHT))
+            except Exception as e:
+                print(e)
 
             if frame_count == 0:
                 run_face_detection = True
-
+            ''' OUTPUT FRAME '''
             if webcam:
                 # firefox needs RGB
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -68,11 +72,11 @@ def run_rt(webcam):
 
             else:
                 cv2.imshow('Video', image)
-
+            ''' BEGIN FACE DETECTION '''
             if run_face_detection:
                 new_faces_rects = haar_cascade_face.detectMultiScale(frame, scaleFactor=3, minNeighbors=5)
                 run_face_detection = False
-
+            ''' SCHEDULE CROP AND PAN '''
             if len(new_faces_rects) == 1:
                 faces_rects = new_faces_rects
                 if first_frame:
@@ -95,6 +99,7 @@ def run_rt(webcam):
                     else:
                         next_update_val[i] = 0
         now = datetime.now()
+        ''' SET CROP AND PAN '''
         for i in range(4):
             if next_update_time[i] <= now:
                 current_viewport[i] += next_update_val[i]
