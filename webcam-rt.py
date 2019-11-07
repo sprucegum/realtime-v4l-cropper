@@ -9,7 +9,7 @@ PROCESSING_HEIGHT = 720
 PROCESSING_WIDTH = 1280
 FPS = 30
 def run_rt(webcam):
-    video_capture = cv2.VideoCapture(2)
+    video_capture = cv2.VideoCapture(0)
     time.sleep(1)
     video_capture.set(cv2.CAP_PROP_FRAME_WIDTH, CAPTURE_WIDTH)
     video_capture.set(cv2.CAP_PROP_FRAME_HEIGHT, CAPTURE_HEIGHT)
@@ -98,7 +98,7 @@ def run_rt(webcam):
         for i in range(4):
             if next_update_time[i] <= now:
                 current_viewport[i] += next_update_val[i]
-                if current_viewport[i] == faces_rects[0][i]:
+                if len(faces_rects) and current_viewport[i] == faces_rects[0][i]:
                     next_update_val[i] = 0
                 next_update_time[i] = now + time_until_next_crop[i]
 
