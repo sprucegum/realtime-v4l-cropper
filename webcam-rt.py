@@ -74,7 +74,7 @@ def run_rt(webcam):
                 cv2.imshow('Video', image)
             ''' BEGIN FACE DETECTION '''
             if run_face_detection:
-                new_faces_rects = haar_cascade_face.detectMultiScale(frame, scaleFactor=3, minNeighbors=5)
+                new_faces_rects = haar_cascade_face.detectMultiScale(frame, scaleFactor=2, minNeighbors=5)
                 run_face_detection = False
             ''' SCHEDULE CROP AND PAN '''
             if len(new_faces_rects) == 1:
@@ -89,9 +89,9 @@ def run_rt(webcam):
                         next_update_val[i] = -1
                     if diff < 0:
                         next_update_val[i] = 1
-                    if abs(diff) > 20:
+                    if (i in [0, 1] and abs(diff) > 20) or (i in [2, 3] and abs(diff) > 10):
                         update_rate = FPS*10
-                        if i in [2,3]:  # slow down the zoom of the crop
+                        if i in [2, 3]:  # slow down the zoom of the crop
                             update_rate = 15
                         time_until_crop = (td / min(abs(diff), update_rate))
                         time_until_next_crop[i] = time_until_crop
