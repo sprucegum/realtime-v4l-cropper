@@ -3,14 +3,16 @@ import cv2
 import time
 import numpy as np
 from datetime import datetime, timedelta
+CAPTURE_WIDTH = 1920
+CAPTURE_HEIGHT = 1080
 PROCESSING_HEIGHT = 720
 PROCESSING_WIDTH = 1280
-
+FPS = 30
 def run_rt(webcam):
     video_capture = cv2.VideoCapture(2)
     time.sleep(1)
-    video_capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-    video_capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+    video_capture.set(cv2.CAP_PROP_FRAME_WIDTH, CAPTURE_WIDTH)
+    video_capture.set(cv2.CAP_PROP_FRAME_HEIGHT, CAPTURE_HEIGHT)
 
     width = video_capture.get(3)  # float
     height = video_capture.get(4)  # float
@@ -26,20 +28,22 @@ def run_rt(webcam):
 
     # loop until user clicks 'q' to exit
     frame_count = 0
-    td = timedelta(seconds=0.1)
+    td = timedelta(seconds=1)
     now = datetime.now()
     one_sec = now + td
     next_update_time = [one_sec, one_sec, one_sec, one_sec]
+    time_until_next_crop = [td, td, td, td]
     next_update_val = [0, 0, 0, 0]
     current_viewport = [0, 0, PROCESSING_HEIGHT, PROCESSING_WIDTH]
     first_frame = True
-    next_frame = now + timedelta(seconds=1 / 30.0)
+    next_frame = now + timedelta(seconds=1.0/FPS)
     run_face_detection = True
+    faces_rects = []
     while True:
         now = datetime.now()
         if now >= next_frame:
-            next_frame = now + timedelta(seconds=1/30.0)
-            frame_count = (frame_count + 1) % 30
+            next_frame = now + timedelta(seconds=1.0/FPS)
+            frame_count = (frame_count + 1) % FPS
             ret, frame = video_capture.read()
             frame = cv2.resize(frame, (PROCESSING_WIDTH, PROCESSING_HEIGHT))
             current_x, current_y, current_h, current_w = current_viewport
@@ -66,13 +70,11 @@ def run_rt(webcam):
                 cv2.imshow('Video', image)
 
             if run_face_detection:
-                faces_rects = haar_cascade_face.detectMultiScale(frame, scaleFactor=3, minNeighbors=5)
+                new_faces_rects = haar_cascade_face.detectMultiScale(frame, scaleFactor=3, minNeighbors=5)
                 run_face_detection = False
-            for i in range(4):
-                if next_update_time[i] < now:
-                    current_viewport[i] += next_update_val[i]
-                    next_update_val[i] = 0
-            if len(faces_rects) == 1:
+
+            if len(new_faces_rects) == 1:
+                faces_rects = new_faces_rects
                 if first_frame:
                     current_viewport = np.copy(faces_rects[0])
                     first_frame = False
@@ -84,12 +86,21 @@ def run_rt(webcam):
                     if diff < 0:
                         next_update_val[i] = 1
                     if abs(diff) > 20:
-                        update_rate = 30
+                        update_rate = FPS*10
                         if i in [2,3]:  # slow down the zoom of the crop
                             update_rate = 15
-                        next_update_time[i] = now + (td / (min(abs(diff), update_rate)))
+                        time_until_crop = (td / min(abs(diff), update_rate))
+                        time_until_next_crop[i] = time_until_crop
+                        next_update_time[i] = now
                     else:
                         next_update_val[i] = 0
+        now = datetime.now()
+        for i in range(4):
+            if next_update_time[i] <= now:
+                current_viewport[i] += next_update_val[i]
+                if current_viewport[i] == faces_rects[0][i]:
+                    next_update_val[i] = 0
+                next_update_time[i] = now + time_until_next_crop[i]
 
 if __name__ == "__main__":
     run_rt(True)
