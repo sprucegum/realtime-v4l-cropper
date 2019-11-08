@@ -62,7 +62,7 @@ def run_rt(webcam):
                 current_x, current_y, current_h, current_w = current_viewport
                 aim_up = -10
                 center_point = [current_x + (current_w/2), current_y + current_h/2 + aim_up]
-                zoomout = 1.5
+                zoomout = 2.0
                 crop_height = int(current_h*zoomout)
                 crop_width = int(crop_height*output_ratio)
                 ideal_crop = [center_point[X] - (crop_width/2), center_point[Y] - (crop_height/2)]
