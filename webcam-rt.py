@@ -7,6 +7,16 @@ CAPTURE_WIDTH = 1920
 CAPTURE_HEIGHT = 1080
 PROCESSING_HEIGHT = 720
 PROCESSING_WIDTH = 1280
+AXIS_LIMITS = [
+    [[0], [PROCESSING_HEIGHT]],
+    [[0], [PROCESSING_WIDTH]]
+]
+AXIS_MIN = 0
+AXIS_MAX = 1
+X = 0
+Y = 1
+HEIGHT = 2
+WIDTH = 3
 FPS = 30
 def run_rt(webcam):
     video_capture = cv2.VideoCapture(0)
@@ -39,6 +49,7 @@ def run_rt(webcam):
     next_frame = now + timedelta(seconds=1.0/FPS)
     run_face_detection = True
     faces_rects = []
+    output_ratio = PROCESSING_WIDTH/(PROCESSING_HEIGHT*1.0)
     while True:
         now = datetime.now()
         if now >= next_frame:
@@ -51,13 +62,18 @@ def run_rt(webcam):
                 current_x, current_y, current_h, current_w = current_viewport
                 aim_up = -10
                 center_point = [current_x + (current_w/2), current_y + current_h/2 + aim_up]
-                output_ratio = PROCESSING_WIDTH/(PROCESSING_HEIGHT*1.0)
                 zoomout = 1.5
                 crop_height = int(current_h*zoomout)
                 crop_width = int(crop_height*output_ratio)
-                ideal_crop = [center_point[0] - (crop_width/2), center_point[1] - (crop_height/2)]
+                ideal_crop = [center_point[X] - (crop_width/2), center_point[Y] - (crop_height/2)]
                 ideal_crop = list(map(int, ideal_crop))
-                image = frame[ideal_crop[1]:ideal_crop[1]+crop_height, ideal_crop[0]:ideal_crop[0]+crop_width]
+                '''constrain crop'''
+                for i in [X, Y]:
+                    if i == X:
+                        ideal_crop[i] = max(min(ideal_crop[i], PROCESSING_WIDTH - crop_width), 0)
+                    if i == Y:
+                        ideal_crop[i] = max(min(ideal_crop[i], PROCESSING_HEIGHT - crop_height), 0)
+                image = frame[ideal_crop[Y]:ideal_crop[Y]+crop_height, ideal_crop[X]:ideal_crop[X]+crop_width]
                 image = cv2.resize(image, (PROCESSING_WIDTH, PROCESSING_HEIGHT))
             except Exception as e:
                 print(e)
@@ -82,16 +98,16 @@ def run_rt(webcam):
                 if first_frame:
                     current_viewport = np.copy(faces_rects[0])
                     first_frame = False
-                for i in range(4):
+                for i in [X, Y, HEIGHT]: # WIDTH is excluded because we don't even care, we just derive it from the height
                     diff = current_viewport[i] - faces_rects[0][i]
                     next_update_val[i] = 0
                     if diff > 0:
                         next_update_val[i] = -1
                     if diff < 0:
                         next_update_val[i] = 1
-                    if (i in [0, 1] and abs(diff) > 20) or (i in [2, 3] and abs(diff) > 10):
+                    if (i in [X, Y] and abs(diff) > 20) or (i in [HEIGHT] and abs(diff) > 10):
                         update_rate = FPS*10
-                        if i in [2, 3]:  # slow down the zoom of the crop
+                        if i in [HEIGHT]:  # slow down the zoom of the crop
                             update_rate = 15
                         time_until_crop = (td / min(abs(diff), update_rate))
                         time_until_next_crop[i] = time_until_crop
@@ -100,9 +116,11 @@ def run_rt(webcam):
                         next_update_val[i] = 0
         ''' SET CROP AND PAN '''
         lowest_time = timedelta(seconds=1)
-        for i in range(4):
+        for i in [X, Y , HEIGHT]: # ignore width, it is derived from height.
             if next_update_time[i] <= now:
                 current_viewport[i] += next_update_val[i]
+                if i == HEIGHT: # if height
+                    current_viewport[WIDTH] = int(current_viewport[i]/output_ratio)
                 if len(faces_rects) and current_viewport[i] == faces_rects[0][i]:
                     next_update_val[i] = 0
                 next_update_time[i] = now + time_until_next_crop[i]
