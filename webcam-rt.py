@@ -98,14 +98,23 @@ def run_rt(webcam):
                         next_update_time[i] = now
                     else:
                         next_update_val[i] = 0
-        now = datetime.now()
         ''' SET CROP AND PAN '''
+        lowest_time = timedelta(seconds=1)
         for i in range(4):
             if next_update_time[i] <= now:
                 current_viewport[i] += next_update_val[i]
                 if len(faces_rects) and current_viewport[i] == faces_rects[0][i]:
                     next_update_val[i] = 0
                 next_update_time[i] = now + time_until_next_crop[i]
+                if time_until_next_crop[i] < lowest_time:
+                    lowest_time = time_until_next_crop[i]
+        frame_time = datetime.now() - now
+        next_frame_min = max((timedelta(seconds=1.0/FPS) - frame_time).total_seconds(), 0)
+        next_frame_sched = max((lowest_time - frame_time).total_seconds(), 0)
+        sleep_time = min(next_frame_sched, next_frame_min)
+        if (sleep_time > 0):
+            time.sleep(sleep_time)
+
 
 if __name__ == "__main__":
     run_rt(True)
